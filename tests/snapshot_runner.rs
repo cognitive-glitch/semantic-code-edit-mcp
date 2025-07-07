@@ -1,8 +1,8 @@
 use anyhow::{Error, Result};
 use diffy::{DiffOptions, PatchFormatter};
 use mcplease::traits::Tool;
-use semantic_edit_mcp::state::SemanticEditTools;
-use semantic_edit_mcp::tools::Tools;
+use semantic_code_edit_mcp::state::SemanticEditTools;
+use semantic_code_edit_mcp::tools::Tools;
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -148,7 +148,7 @@ impl SnapshotRunner {
                 let args_path = path.join("args.json");
                 let response_path = path.join("response.txt");
 
-                let input_path = fs::read_dir(&path)?.into_iter().find_map(|entry| {
+                let input_path = fs::read_dir(&path)?.find_map(|entry| {
                     entry.ok().and_then(|entry| {
                         if entry.path().is_file()
                             && entry.path().file_stem().and_then(|x| x.to_str()) == Some("input")
@@ -345,7 +345,7 @@ impl SnapshotRunner {
             })));
 
             match tool.execute(&mut self.state) {
-                Ok(response) => snapshot_execution_result.response.push_str(&response),
+                Ok(ref response) => snapshot_execution_result.response.push_str(response),
                 Err(err) => snapshot_execution_result
                     .response
                     .push_str(&err.to_string()),

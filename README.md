@@ -159,7 +159,7 @@ Insert content after an enum definition.
 
 ```json
 {
-  "file_path": "src/lib.rs", 
+  "file_path": "src/lib.rs",
   "enum_name": "Color",
   "content": "impl Color {\n    fn is_primary(&self) -> bool {\n        matches!(self, Color::Red | Color::Blue | Color::Yellow)\n    }\n}",
   "preview_only": false
@@ -383,7 +383,7 @@ Our architecture makes it easy to add new programming languages:
 - Extensible language registry
 - Syntax validation safety net for all languages
 
-### ✅ Comprehensive Validation System  
+### ✅ Comprehensive Validation System
 - Two-layer validation prevents file corruption
 - Context validation for supported languages
 - Syntax validation for all languages
@@ -399,16 +399,16 @@ Our architecture makes it easy to add new programming languages:
 
 ### Next Language Targets
 - **Markdown** - Documentation editing (in progress)
-- **Python** - High demand, good tree-sitter support  
+- **Python** - High demand, good tree-sitter support
 - **TypeScript** - JavaScript ecosystem support
 - **YAML** - Configuration files
 
 ### Advanced Features
 - Cross-language operations
-- Project-aware validation  
+- Project-aware validation
 - Batch editing with transactions
 - IDE integration (VS Code extension)
 
 ## License
 
-MIT OR Apache-2.0
+Apache-2.0

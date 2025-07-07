@@ -1,4 +1,4 @@
-use super::{traits::DefaultEditor, LanguageCommon, LanguageName};
+use super::{LanguageCommon, LanguageName, traits::DefaultEditor};
 use anyhow::Result;
 
 pub fn language() -> Result<LanguageCommon> {

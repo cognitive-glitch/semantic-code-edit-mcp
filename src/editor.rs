@@ -4,7 +4,7 @@ mod edit_position;
 
 use std::{collections::BTreeSet, path::PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use diffy::{DiffOptions, Patch, PatchFormatter};
 use edit::Edit;
 use edit_iterator::EditIterator;

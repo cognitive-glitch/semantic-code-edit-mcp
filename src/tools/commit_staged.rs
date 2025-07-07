@@ -1,6 +1,6 @@
 use crate::editor::Editor;
 use crate::state::SemanticEditTools;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use mcplease::traits::{Tool, WithExamples};
 use mcplease::types::Example;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ impl Tool<SemanticEditTools> for CommitStaged {
             .take_staged_operation(None)?
             .ok_or_else(|| anyhow!("No operation is currently staged"))?;
 
-        let editor = Editor::from_staged_operation(staged_operation, &state.language_registry())?;
+        let editor = Editor::from_staged_operation(staged_operation, state.language_registry())?;
         let (message, output, output_path) = editor.commit()?;
 
         if let Some(output) = output {

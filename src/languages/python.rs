@@ -1,4 +1,4 @@
-use crate::languages::{traits::LanguageEditor, LanguageCommon, LanguageName};
+use crate::languages::{LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::Result;
 use rustpython_parser::ast::TextSize;
 

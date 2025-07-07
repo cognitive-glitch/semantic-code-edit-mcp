@@ -1,4 +1,4 @@
-use super::{traits::LanguageEditor, LanguageCommon, LanguageName};
+use super::{LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::Result;
 use jsonformat::Indentation;
 use serde_json::Value;

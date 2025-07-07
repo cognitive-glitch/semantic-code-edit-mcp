@@ -1,4 +1,4 @@
-use crate::languages::{traits::LanguageEditor, LanguageCommon, LanguageName};
+use crate::languages::{LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::Result;
 use std::ops::Range;
 use taplo::rowan::{TextRange, TextSize};

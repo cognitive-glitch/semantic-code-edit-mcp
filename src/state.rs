@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use fieldwork::Fieldwork;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
@@ -168,9 +168,7 @@ impl SemanticEditTools {
         let session_id = session_id.unwrap_or_else(|| self.default_session_id());
 
         match self.get_context(Some(session_id))? {
-            Some(context) => {
-                Ok(std::fs::canonicalize(context.join(path_str))?)
-            },
+            Some(context) => Ok(std::fs::canonicalize(context.join(path_str))?),
             None => Err(anyhow!(
                 "No context found for `{session_id}`. Use set_context first or provide an absolute path.",
             )),

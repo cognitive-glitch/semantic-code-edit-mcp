@@ -1,4 +1,4 @@
-use crate::languages::{traits::DefaultEditor, LanguageCommon, LanguageName};
+use crate::languages::{LanguageCommon, LanguageName, traits::DefaultEditor};
 use anyhow::Result;
 
 pub fn language() -> Result<LanguageCommon> {

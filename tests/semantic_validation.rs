@@ -1,12 +1,11 @@
-use semantic_edit_mcp::{
+use semantic_code_edit_mcp::{
     editor::Editor,
     languages::{LanguageName, LanguageRegistry},
 };
-use LanguageName::Rust;
 
 #[test]
 fn impl_block_pub_fn() {
-    assert!(validate_code(r#"impl User pub fn new () {}"#, Rust).is_some());
+    assert!(validate_code(r#"impl User pub fn new () {}"#, LanguageName::Rust).is_some());
 }
 
 fn validate_code(code: &str, language: LanguageName) -> Option<String> {
