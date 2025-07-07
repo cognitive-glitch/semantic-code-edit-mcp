@@ -1,5 +1,5 @@
-use crate::editor::Editor;
 use crate::state::SemanticEditTools;
+use crate::tools::ToolHelpers;
 use anyhow::{Result, anyhow};
 use mcplease::traits::{Tool, WithExamples};
 use mcplease::types::Example;
@@ -42,15 +42,11 @@ impl Tool<SemanticEditTools> for CommitStaged {
             .take_staged_operation(None)?
             .ok_or_else(|| anyhow!("No operation is currently staged"))?;
 
-        let editor = Editor::from_staged_operation(staged_operation, state.language_registry())?;
+        let editor = state.create_editor_from_operation(staged_operation)?;
         let (message, output, output_path) = editor.commit()?;
 
         if let Some(output) = output {
-            if let Some(commit) = state.commit_fn_mut().take() {
-                commit(output_path, output);
-            } else {
-                std::fs::write(output_path, output)?;
-            }
+            state.file_operations().write_file(output_path, output)?;
         }
 
         Ok(message)

@@ -1,15 +1,18 @@
 use anyhow::{Error, Result};
 use diffy::{DiffOptions, PatchFormatter};
 use mcplease::traits::Tool;
+use semantic_code_edit_mcp::filesystem::TestFileOperations;
 use semantic_code_edit_mcp::state::SemanticEditTools;
 use semantic_code_edit_mcp::tools::Tools;
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 pub struct SnapshotRunner {
     update_mode: bool,
     state: SemanticEditTools,
+    test_file_operations: Arc<TestFileOperations>,
     test_filter: Option<String>,
 }
 
@@ -82,16 +85,25 @@ impl ArgsDotJson {
 
 impl SnapshotRunner {
     pub fn new(update_mode: bool, test_filter: Option<String>) -> Result<Self> {
-        let state = SemanticEditTools::new(None)?;
+        let test_file_operations = Arc::new(TestFileOperations::new());
+        let state = SemanticEditTools::with_file_operations(
+            None,
+            Box::new(Arc::clone(&test_file_operations)),
+        )?;
         Ok(Self {
             update_mode,
             state,
+            test_file_operations,
             test_filter,
         })
     }
 
     fn reset_state(&mut self, base_path: PathBuf) -> Result<()> {
-        self.state = SemanticEditTools::new(None)?;
+        self.test_file_operations.clear_captures();
+        self.state = SemanticEditTools::with_file_operations(
+            None,
+            Box::new(Arc::clone(&self.test_file_operations)),
+        )?;
         self.state.set_default_session_id("test");
         self.state.set_context(None, base_path)?;
         Ok(())
@@ -339,11 +351,6 @@ impl SnapshotRunner {
                 .push_str("=== snapshot test tool call: ");
             snapshot_execution_result.response.push_str(tool.name());
             snapshot_execution_result.response.push_str(" ===\n");
-            let (tx, rx) = std::sync::mpsc::channel();
-            self.state.set_commit_fn(Some(Box::new(move |_, content| {
-                tx.send(content).unwrap();
-            })));
-
             match tool.execute(&mut self.state) {
                 Ok(ref response) => snapshot_execution_result.response.push_str(response),
                 Err(err) => snapshot_execution_result
@@ -351,7 +358,9 @@ impl SnapshotRunner {
                     .push_str(&err.to_string()),
             }
             snapshot_execution_result.response.push('\n');
-            snapshot_execution_result.output = rx.try_recv().ok();
+
+            // Get the captured file content from test file operations
+            snapshot_execution_result.output = self.test_file_operations.get_last_write_content();
         }
         Ok(snapshot_execution_result)
     }

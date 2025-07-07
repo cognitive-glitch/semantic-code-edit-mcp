@@ -1,15 +1,12 @@
-use super::{LanguageCommon, LanguageName, traits::DefaultEditor};
+use crate::languages::{LanguageBuilder, LanguageCommon, LanguageName};
 use anyhow::Result;
 
 pub fn language() -> Result<LanguageCommon> {
-    let language = tree_sitter_javascript::LANGUAGE.into();
-    let editor = Box::new(DefaultEditor::new());
-
-    Ok(LanguageCommon {
-        name: LanguageName::Javascript,
-        file_extensions: &["js", "jsx"],
-        language,
-        editor,
-        validation_query: None,
-    })
+    LanguageBuilder::new(
+        LanguageName::Javascript,
+        &["js", "jsx", "mjs", "cjs"],
+        tree_sitter_javascript::LANGUAGE.into(),
+    )
+    .with_validation_query(include_str!("../../queries/javascript/validation.scm"))
+    .build()
 }

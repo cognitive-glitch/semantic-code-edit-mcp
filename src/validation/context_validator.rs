@@ -119,6 +119,26 @@ impl ContextValidator {
 }
 
 impl ValidationResult<'_, '_> {
+    /// Find the nearest UTF-8 character boundary
+    fn find_utf8_boundary(&self, byte_pos: usize, search_backward: bool) -> usize {
+        let bytes = self.source_code.as_bytes();
+        let mut pos = byte_pos.min(bytes.len());
+
+        if search_backward {
+            // Search backwards for valid UTF-8 start
+            while pos > 0 && !self.source_code.is_char_boundary(pos) {
+                pos -= 1;
+            }
+        } else {
+            // Search forwards for valid UTF-8 boundary
+            while pos < bytes.len() && !self.source_code.is_char_boundary(pos) {
+                pos += 1;
+            }
+        }
+
+        pos
+    }
+
     pub fn format_errors(&self) -> String {
         if self.is_valid {
             return "✅ All validations passed".to_string();
@@ -130,7 +150,28 @@ impl ValidationResult<'_, '_> {
         for violation in &self.violations {
             response.push_str(&format!("• {}:\n", violation.message));
             let parent = violation.node.parent().unwrap_or(violation.node);
-            response.push_str(&self.source_code[parent.byte_range()]);
+
+            // Safe UTF-8 string slicing using byte_range()
+            let range = parent.byte_range();
+            let source_slice = if range.end <= self.source_code.len() {
+                // Ensure we don't slice in the middle of UTF-8 characters
+                match self.source_code.get(range.clone()) {
+                    Some(slice) => slice,
+                    None => {
+                        // Fallback: find nearest valid UTF-8 boundaries
+                        let start = self.find_utf8_boundary(range.start, true);
+                        let end =
+                            self.find_utf8_boundary(range.end.min(self.source_code.len()), false);
+                        self.source_code
+                            .get(start..end)
+                            .unwrap_or("<invalid UTF-8 range>")
+                    }
+                }
+            } else {
+                "<range out of bounds>"
+            };
+
+            response.push_str(source_slice);
             response.push_str("\n\n");
             response.push_str(&format!("  💡 Suggestion: {}\n", violation.suggestion));
         }

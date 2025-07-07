@@ -1,12 +1,20 @@
+pub mod c;
+pub mod cpp;
+pub mod csharp;
+pub mod go;
+pub mod java;
 pub mod javascript;
 pub mod json;
+pub mod php;
 pub mod plain;
 pub mod python;
+pub mod ruby;
 pub mod rust;
 pub mod toml;
 pub mod traits;
 pub mod tsx;
 pub mod typescript;
+pub mod utils;
 
 use anyhow::Result;
 use schemars::JsonSchema;
@@ -18,7 +26,9 @@ use std::{
 };
 use tree_sitter::{Language, Parser, Query};
 
-use crate::languages::traits::LanguageEditor;
+use crate::error::SemanticEditError;
+
+use crate::languages::traits::{DefaultEditor, LanguageEditor};
 
 /// Registry to manage all supported languages
 #[derive(Debug)]
@@ -55,11 +65,98 @@ impl Display for LanguageCommon {
     }
 }
 
+/// Builder for creating standardized language configurations
+pub struct LanguageBuilder {
+    name: LanguageName,
+    file_extensions: &'static [&'static str],
+    language: Language,
+    editor: Option<Box<dyn LanguageEditor>>,
+    validation_query_content: Option<&'static str>,
+}
+
+impl std::fmt::Debug for LanguageBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LanguageBuilder")
+            .field("name", &self.name)
+            .field("file_extensions", &self.file_extensions)
+            .field("language", &self.language)
+            .field("editor", &"<Box<dyn LanguageEditor>>")
+            .field("validation_query_content", &self.validation_query_content)
+            .finish()
+    }
+}
+
+impl LanguageBuilder {
+    /// Create a new language builder with required parameters
+    pub fn new(
+        name: LanguageName,
+        file_extensions: &'static [&'static str],
+        language: Language,
+    ) -> Self {
+        Self {
+            name,
+            file_extensions,
+            language,
+            editor: None,
+            validation_query_content: None,
+        }
+    }
+
+    /// Set a custom editor implementation
+    pub fn with_editor(mut self, editor: Box<dyn LanguageEditor>) -> Self {
+        self.editor = Some(editor);
+        self
+    }
+
+    /// Add a validation query from embedded content
+    pub fn with_validation_query(mut self, query_content: &'static str) -> Self {
+        self.validation_query_content = Some(query_content);
+        self
+    }
+
+    /// Build the final LanguageCommon configuration
+    pub fn build(self) -> Result<LanguageCommon> {
+        let validation_query = if let Some(content) = self.validation_query_content {
+            Some(tree_sitter::Query::new(&self.language, content)?)
+        } else {
+            None
+        };
+
+        Ok(LanguageCommon {
+            name: self.name,
+            file_extensions: self.file_extensions,
+            language: self.language,
+            editor: self
+                .editor
+                .unwrap_or_else(|| Box::new(DefaultEditor::new())),
+            validation_query,
+        })
+    }
+}
+
+/// Helper function to create a simple language configuration using DefaultEditor
+/// Maintained for backward compatibility - use LanguageBuilder for new code
+pub fn simple_language(
+    name: LanguageName,
+    file_extensions: &'static [&'static str],
+    language: Language,
+) -> Result<LanguageCommon> {
+    LanguageBuilder::new(name, file_extensions, language).build()
+}
+
 impl LanguageCommon {
     pub fn tree_sitter_parser(&self) -> Result<Parser> {
         let mut parser = Parser::new();
         parser.set_language(self.tree_sitter_language())?;
         Ok(parser)
+    }
+
+    pub fn docs(&self) -> String {
+        format!(
+            "Language: {}\nFile extensions: {}\nTree-sitter language available for AST-aware operations",
+            self.name.as_str(),
+            self.file_extensions.join(", ")
+        )
     }
 }
 
@@ -75,6 +172,13 @@ pub enum LanguageName {
     Typescript,
     Tsx,
     Python,
+    Go,
+    Cpp,
+    C,
+    Java,
+    Php,
+    CSharp,
+    Ruby,
     #[serde(other)]
     Other,
 }
@@ -88,6 +192,13 @@ impl LanguageName {
             LanguageName::Typescript => "typescript",
             LanguageName::Tsx => "tsx",
             LanguageName::Python => "python",
+            LanguageName::Go => "go",
+            LanguageName::Cpp => "cpp",
+            LanguageName::C => "c",
+            LanguageName::Java => "java",
+            LanguageName::Php => "php",
+            LanguageName::CSharp => "csharp",
+            LanguageName::Ruby => "ruby",
             LanguageName::Other => "other",
         }
     }
@@ -113,6 +224,13 @@ impl LanguageRegistry {
         registry.register_language(tsx::language()?);
         registry.register_language(javascript::language()?);
         registry.register_language(python::language()?);
+        registry.register_language(go::language()?);
+        registry.register_language(cpp::language()?);
+        registry.register_language(c::language()?);
+        registry.register_language(java::language()?);
+        registry.register_language(php::language()?);
+        registry.register_language(csharp::language()?);
+        registry.register_language(ruby::language()?);
         registry.register_language(plain::language()?);
 
         Ok(registry)
@@ -126,8 +244,12 @@ impl LanguageRegistry {
         self.languages.insert(name, language);
     }
 
-    pub fn get_language(&self, name: LanguageName) -> &LanguageCommon {
-        self.languages.get(&name).unwrap()
+    pub fn get_language(&self, name: LanguageName) -> Result<&LanguageCommon, SemanticEditError> {
+        self.languages
+            .get(&name)
+            .ok_or(SemanticEditError::ParserUnavailable {
+                language: name.to_string(),
+            })
     }
 
     pub fn get_language_with_hint(
@@ -138,7 +260,8 @@ impl LanguageRegistry {
         let language_name = language_hint
             .or_else(|| self.detect_language_from_path(file_path))
             .unwrap_or(LanguageName::Other);
-        Ok(self.get_language(language_name))
+        self.get_language(language_name)
+            .map_err(anyhow::Error::from)
     }
 
     pub fn detect_language_from_path(&self, file_path: &Path) -> Option<LanguageName> {

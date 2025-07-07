@@ -1,6 +1,6 @@
-use crate::{editor::Editor, selector::Selector, state::SemanticEditTools};
+use crate::{selector::Selector, state::SemanticEditTools, tools::ToolHelpers};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use mcplease::{
     traits::{Tool, WithExamples},
     types::Example,
@@ -71,7 +71,7 @@ impl Tool<SemanticEditTools> for RetargetStaged {
             .modify_staged_operation(None, |op| op.retarget(selector))?
             .ok_or_else(|| anyhow!("no operation staged"))?;
 
-        let editor = Editor::from_staged_operation(staged_operation, state.language_registry())?;
+        let editor = state.create_editor_from_operation(staged_operation)?;
         let (message, staged_operation) = editor.preview()?;
         if staged_operation.is_some() {
             // leave failed operations in place

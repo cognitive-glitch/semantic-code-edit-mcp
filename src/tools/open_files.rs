@@ -1,9 +1,10 @@
+use crate::error::SemanticEditError;
 use crate::languages::LanguageName;
 use crate::state::SemanticEditTools;
-use crate::traits::WithExamples;
-use crate::types::Example;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use diffy::{DiffOptions, PatchFormatter};
+use mcplease::traits::WithExamples;
+use mcplease::types::Example;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
@@ -33,7 +34,7 @@ pub struct OpenFiles {
 
 impl WithExamples for OpenFiles {
     fn examples() -> Vec<Example<Self>> {
-        Some(vec![
+        vec![
             Example {
                 description: "Open a single rust file",
                 item: Self {
@@ -68,7 +69,7 @@ impl WithExamples for OpenFiles {
                     session_id: None,
                 },
             },
-        ])
+        ]
     }
 }
 
@@ -108,7 +109,12 @@ impl OpenFiles {
                 let current_content = std::fs::read_to_string(file_path)?;
 
                 let cache_key = format!("{}#{}", file_path.display(), since);
-                if let Some(earlier_content) = state.file_cache().lock().unwrap().get(&cache_key) {
+                if let Some(earlier_content) = state
+                    .file_cache()
+                    .lock()
+                    .map_err(|_| anyhow::Error::from(SemanticEditError::FileCachePoisoned))?
+                    .get(&cache_key)
+                {
                     return Ok(handle_diff_request(
                         file_path,
                         &current_content,
@@ -138,7 +144,11 @@ impl OpenFiles {
             // Cache the content for future diff requests
             let canonicalized_file_path = std::fs::canonicalize(&file_path)?;
             let cache_key = format!("{}#{}", canonicalized_file_path.display(), separator);
-            state.file_cache().lock().unwrap().put(cache_key, content);
+            state
+                .file_cache()
+                .lock()
+                .map_err(|_| anyhow::Error::from(SemanticEditError::FileCachePoisoned))?
+                .put(cache_key, content);
         }
 
         let response = format!(

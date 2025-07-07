@@ -78,6 +78,23 @@ impl<'editor, 'language> EditIterator<'editor, 'language> {
         )
     }
 
+    /// Add spacing and newline variations to a list of edits
+    ///
+    /// This consolidates the common pattern of generating additional edit variations
+    /// with space and newline prefixes/suffixes for better placement options.
+    fn add_spacing_variations(&self, edits: &mut Vec<Edit<'editor, 'language>>, before: bool) {
+        let original_edits = edits.clone();
+        for edit in &original_edits {
+            if before {
+                edits.push(edit.clone().with_content(format!("{} ", &edit.content)));
+                edits.push(edit.clone().with_content(format!("{}\n", &edit.content)));
+            } else {
+                edits.push(edit.clone().with_content(format!(" {}", &edit.content)));
+                edits.push(edit.clone().with_content(format!("\n{}", &edit.content)));
+            }
+        }
+    }
+
     fn find_after_ast_insert_positions(
         &self,
         anchor: &str,
@@ -94,12 +111,7 @@ impl<'editor, 'language> EditIterator<'editor, 'language> {
             })
             .collect::<Vec<_>>();
 
-        let mut additional = vec![];
-        for edit in &edits {
-            additional.push(edit.clone().with_content(format!(" {}", &edit.content)));
-            additional.push(edit.clone().with_content(format!("\n{}", &edit.content)));
-        }
-        edits.extend_from_slice(&additional);
+        self.add_spacing_variations(&mut edits, false);
         Ok(edits)
     }
 
@@ -151,17 +163,7 @@ impl<'editor, 'language> EditIterator<'editor, 'language> {
         if edits.is_empty() {
             Err(format!("Anchor text \"{anchor}\" not found in source"))
         } else {
-            let mut additional = vec![];
-            for edit in &edits {
-                if before {
-                    additional.push(edit.clone().with_content(format!("{} ", &edit.content)));
-                    additional.push(edit.clone().with_content(format!("{}\n", &edit.content)));
-                } else {
-                    additional.push(edit.clone().with_content(format!(" {}", &edit.content)));
-                    additional.push(edit.clone().with_content(format!("\n{}", &edit.content)));
-                }
-            }
-            edits.extend_from_slice(&additional);
+            self.add_spacing_variations(&mut edits, before);
             Ok(edits)
         }
     }
@@ -237,8 +239,14 @@ impl<'editor, 'language> Iterator for EditIterator<'editor, 'language> {
             return Some(Err(e));
         }
 
-        // Get the current text range to try
-        let text_ranges = self.edits.as_ref().unwrap();
+        // Get the current text range to try - handle invalid state gracefully
+        let text_ranges = match self.edits.as_ref() {
+            Some(edits) => edits,
+            None => {
+                return Some(Err("EditIterator in invalid state".to_string()));
+            }
+        };
+
         if self.current_index >= text_ranges.len() {
             return None; // No more ranges to try
         }

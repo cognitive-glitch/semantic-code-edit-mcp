@@ -8,9 +8,78 @@ use lru::LruCache;
 use serde::{Deserialize, Serialize};
 
 use crate::editor::EditPosition;
+use crate::filesystem::{FileOperations, StdFileOperations};
 use crate::languages::{LanguageName, LanguageRegistry};
 use crate::selector::Selector;
 use mcplease::session::SessionStore;
+
+/// Cache performance statistics
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CacheStats {
+    pub hits: u64,
+    pub misses: u64,
+    pub total_requests: u64,
+}
+
+impl CacheStats {
+    pub fn hit_rate(&self) -> f64 {
+        if self.total_requests == 0 {
+            0.0
+        } else {
+            self.hits as f64 / self.total_requests as f64
+        }
+    }
+}
+
+/// LRU cache wrapper that tracks statistics
+#[derive(Debug)]
+pub struct StatsLruCache {
+    cache: LruCache<String, String>,
+    stats: CacheStats,
+}
+
+impl StatsLruCache {
+    pub fn new(cap: NonZeroUsize) -> Self {
+        Self {
+            cache: LruCache::new(cap),
+            stats: CacheStats::default(),
+        }
+    }
+
+    pub fn get(&mut self, key: &str) -> Option<&String> {
+        self.stats.total_requests += 1;
+        match self.cache.get(key) {
+            Some(value) => {
+                self.stats.hits += 1;
+                Some(value)
+            }
+            None => {
+                self.stats.misses += 1;
+                None
+            }
+        }
+    }
+
+    pub fn put(&mut self, key: String, value: String) -> Option<String> {
+        self.cache.put(key, value)
+    }
+
+    pub fn cap(&self) -> NonZeroUsize {
+        self.cache.cap()
+    }
+
+    pub fn len(&self) -> usize {
+        self.cache.len()
+    }
+
+    pub fn stats(&self) -> &CacheStats {
+        &self.stats
+    }
+
+    pub fn clear_stats(&mut self) {
+        self.stats = CacheStats::default();
+    }
+}
 
 // Explanation for the presence of session_id that is currently unused: The intent was initially to
 // have a conversation-unique identifier of some sort in order to isolate state between
@@ -53,9 +122,9 @@ pub struct SemanticEditTools {
     #[fieldwork(get_mut)]
     session_store: SessionStore<SemanticEditSessionData>,
     language_registry: Arc<LanguageRegistry>,
-    file_cache: Arc<Mutex<LruCache<String, String>>>,
-    #[fieldwork(set, get_mut, option = false)]
-    commit_fn: Option<Box<(dyn Fn(PathBuf, String) + 'static)>>,
+    file_cache: Arc<Mutex<StatsLruCache>>,
+    #[fieldwork(get)]
+    file_operations: Box<dyn FileOperations>,
     #[fieldwork(set, with)]
     default_session_id: &'static str,
 }
@@ -66,26 +135,48 @@ impl std::fmt::Debug for SemanticEditTools {
             .field("session_store", &self.session_store)
             .field("language_registry", &self.language_registry)
             .field("file_cache", &self.file_cache)
+            .field("file_operations", &"<dyn FileOperations>")
             .field("default_session_id", &self.default_session_id)
             .finish()
     }
 }
 
 impl SemanticEditTools {
-    /// Create a new SemanticEditTools instance
-    pub fn new(storage_path: Option<&str>) -> Result<Self> {
+    /// Create a new SemanticEditTools instance with standard file operations
+    pub fn new(
+        storage_path: Option<&str>,
+        file_operations: Box<dyn FileOperations>,
+        cache_size: Option<NonZeroUsize>,
+    ) -> Result<Self> {
         let storage_path = storage_path.map(|s| PathBuf::from(&*shellexpand::tilde(s)));
         let session_store = SessionStore::new(storage_path)?;
         let language_registry = Arc::new(LanguageRegistry::new()?);
-        let file_cache = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(50).unwrap())));
+        let cache_size =
+            cache_size.unwrap_or_else(|| NonZeroUsize::new(50).expect("50 is non-zero"));
+        let file_cache = Arc::new(Mutex::new(StatsLruCache::new(cache_size)));
 
         Ok(Self {
             session_store,
             language_registry,
             file_cache,
-            commit_fn: None,
+            file_operations,
             default_session_id: "default",
         })
+    }
+
+    /// Create a new SemanticEditTools instance with custom file operations
+    /// Backward compatibility method that uses default cache size
+    pub fn with_file_operations(
+        storage_path: Option<&str>,
+        file_operations: Box<dyn FileOperations>,
+    ) -> Result<Self> {
+        Self::new(storage_path, file_operations, None)
+    }
+
+    /// Create a new SemanticEditTools instance with standard file operations
+    /// Convenience method that uses StdFileOperations and default cache size
+    pub fn with_standard_operations(storage_path: Option<&str>) -> Result<Self> {
+        Self::new(storage_path, Box::new(StdFileOperations), None)
     }
 
     /// Get context for a session
@@ -173,5 +264,24 @@ impl SemanticEditTools {
                 "No context found for `{session_id}`. Use set_context first or provide an absolute path.",
             )),
         }
+    }
+
+    /// Get file cache performance statistics
+    pub fn cache_info(&self) -> Result<CacheStats> {
+        let cache = self
+            .file_cache
+            .lock()
+            .map_err(|_| anyhow!("Cache mutex poisoned"))?;
+        Ok(cache.stats().clone())
+    }
+
+    /// Clear cache performance statistics
+    pub fn clear_cache_stats(&self) -> Result<()> {
+        let mut cache = self
+            .file_cache
+            .lock()
+            .map_err(|_| anyhow!("Cache mutex poisoned"))?;
+        cache.clear_stats();
+        Ok(())
     }
 }

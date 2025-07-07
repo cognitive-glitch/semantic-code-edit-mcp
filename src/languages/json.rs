@@ -1,4 +1,4 @@
-use super::{LanguageCommon, LanguageName, traits::LanguageEditor};
+use super::{LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::Result;
 use jsonformat::Indentation;
 use serde_json::Value;
@@ -6,15 +6,14 @@ use std::collections::BTreeMap;
 use tree_sitter::Tree;
 
 pub fn language() -> Result<LanguageCommon> {
-    let language = tree_sitter_json::LANGUAGE.into();
-    let editor = Box::new(JsonEditor::new());
-    Ok(LanguageCommon {
-        name: LanguageName::Json,
-        file_extensions: &["json"],
-        language,
-        validation_query: None,
-        editor,
-    })
+    LanguageBuilder::new(
+        LanguageName::Json,
+        &["json"],
+        tree_sitter_json::LANGUAGE.into(),
+    )
+    .with_editor(Box::new(JsonEditor::new()))
+    .with_validation_query(include_str!("../../queries/json/validation.scm"))
+    .build()
 }
 
 pub struct JsonEditor;

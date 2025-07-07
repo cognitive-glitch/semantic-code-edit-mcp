@@ -1,4 +1,4 @@
-use super::{LanguageCommon, LanguageName, traits::LanguageEditor};
+use super::{LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::{Result, anyhow};
 use std::{
     io::{Read, Write},
@@ -6,20 +6,14 @@ use std::{
 };
 
 pub fn language() -> Result<LanguageCommon> {
-    let language = tree_sitter_rust::LANGUAGE.into();
-    let validation_query = Some(tree_sitter::Query::new(
-        &language,
-        include_str!("../../queries/rust/validation.scm"),
-    )?);
-    let editor = Box::new(RustEditor);
-
-    Ok(LanguageCommon {
-        language,
-        validation_query,
-        editor,
-        name: LanguageName::Rust,
-        file_extensions: &["rs"],
-    })
+    LanguageBuilder::new(
+        LanguageName::Rust,
+        &["rs"],
+        tree_sitter_rust::LANGUAGE.into(),
+    )
+    .with_editor(Box::new(RustEditor))
+    .with_validation_query(include_str!("../../queries/rust/validation.scm"))
+    .build()
 }
 
 struct RustEditor;

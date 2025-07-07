@@ -1,17 +1,14 @@
-use crate::languages::{LanguageCommon, LanguageName, traits::LanguageEditor};
+use crate::languages::{LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::Result;
 
 pub fn language() -> Result<LanguageCommon> {
-    let language = tree_sitter_typescript::LANGUAGE_TSX.into();
-    let editor = Box::new(TypescriptEditor::new());
-
-    Ok(LanguageCommon {
-        name: LanguageName::Tsx,
-        file_extensions: &["tsx"],
-        language,
-        editor,
-        validation_query: None,
-    })
+    LanguageBuilder::new(
+        LanguageName::Tsx,
+        &["tsx"],
+        tree_sitter_typescript::LANGUAGE_TSX.into(),
+    )
+    .with_editor(Box::new(TypescriptEditor::new()))
+    .build()
 }
 
 pub struct TypescriptEditor;

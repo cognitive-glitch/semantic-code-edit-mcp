@@ -1,15 +1,57 @@
+//! # Editor Module
+//!
+//! The core editing engine for semantic code transformations.
+//! This module orchestrates AST-aware code edits with comprehensive validation.
+//!
+//! ## Architecture
+//!
+//! The Editor is decomposed into focused submodules:
+//! - `validator`: Syntax and context validation
+//! - `formatter`: Language-specific code formatting
+//! - `diff_generator`: Diff generation and efficiency metrics
+//! - `edit`: Individual edit operations
+//! - `edit_iterator`: Iterator for multiple edit locations
+//! - `edit_position`: Edit position tracking
+//!
+//! ## Features
+//!
+//! - **Preview Mode**: Test edits safely before applying
+//! - **Staged Operations**: Support for multi-step workflows
+//! - **Validation**: Two-layer validation prevents file corruption
+//! - **Smart Diffs**: Clean diffs with efficiency metrics
+//!
+//! ## Example
+//!
+//! ```ignore
+//! use semantic_code_edit_mcp::editor::Editor;
+//!
+//! let editor = Editor::new(content, selector, language, file_path, None)?;
+//!
+//! // Preview changes
+//! let (preview_msg, staged_op) = editor.preview()?;
+//!
+//! // Or commit directly
+//! let (message, output, path) = editor.commit()?;
+//! ```
+
+mod diff_generator;
 mod edit;
 mod edit_iterator;
 mod edit_position;
+mod formatter;
+mod validator;
 
-use std::{collections::BTreeSet, path::PathBuf};
+use std::path::PathBuf;
 
+use crate::error::SemanticEditError;
 use anyhow::{Result, anyhow};
-use diffy::{DiffOptions, Patch, PatchFormatter};
+use diff_generator::DiffGenerator;
 use edit::Edit;
 use edit_iterator::EditIterator;
+use formatter::Formatter;
 use ropey::Rope;
 use tree_sitter::Tree;
+use validator::Validator;
 
 pub use edit_position::EditPosition;
 
@@ -17,7 +59,6 @@ use crate::{
     languages::{LanguageCommon, LanguageRegistry},
     selector::Selector,
     state::StagedOperation,
-    validation::ContextValidator,
 };
 
 pub struct Editor<'language> {
@@ -73,7 +114,7 @@ impl<'language> Editor<'language> {
             language_name,
             edit_position,
         } = staged_operation;
-        let language = language_registry.get_language(language_name);
+        let language = language_registry.get_language(language_name)?;
         Self::new(content, selector, language, file_path, edit_position)
     }
 
@@ -88,48 +129,11 @@ Suggestion: Pause and show your human collaborator this context:\n\n{errors}"
     }
 
     fn validate_tree(&self, tree: &Tree, content: &str) -> Option<String> {
-        Self::validate(self.language, tree, content)
+        Validator::validate(self.language, tree, content)
     }
 
     pub fn validate(language: &LanguageCommon, tree: &Tree, content: &str) -> Option<String> {
-        let errors = language.editor().collect_errors(tree, content);
-        if errors.is_empty() {
-            if let Some(query) = language.validation_query() {
-                let validation_result = ContextValidator::validate_tree(tree, query, content);
-
-                if !validation_result.is_valid {
-                    return Some(validation_result.format_errors());
-                }
-            }
-
-            return None;
-        }
-
-        let context_lines = 3;
-        let lines_with_errors = errors.into_iter().collect::<BTreeSet<_>>();
-        let context_lines = lines_with_errors
-            .iter()
-            .copied()
-            .flat_map(|line| line.saturating_sub(context_lines)..line + context_lines)
-            .collect::<BTreeSet<_>>();
-        Some(
-            std::iter::once(String::from("===SYNTAX ERRORS===\n"))
-                .chain(
-                    content
-                        .lines()
-                        .enumerate()
-                        .filter(|(index, _)| context_lines.contains(index))
-                        .map(|(index, line)| {
-                            let display_index = index + 1;
-                            if lines_with_errors.contains(&index) {
-                                format!("{display_index:>4} ->⎸{line}\n")
-                            } else {
-                                format!("{display_index:>4}   ⎸{line}\n")
-                            }
-                        }),
-                )
-                .collect(),
-        )
+        Validator::validate(language, tree, content)
     }
 
     fn edit_iterator(&self) -> EditIterator<'_, 'language> {
@@ -157,7 +161,10 @@ Suggestion: Pause and show your human collaborator this context:\n\n{errors}"
             }
         }
 
-        Ok((failed_edits.first_mut().unwrap().message(), None))
+        failed_edits
+            .first_mut()
+            .map(|edit| (edit.message(), None))
+            .ok_or_else(|| anyhow::Error::from(SemanticEditError::NoValidEditLocations))
     }
 
     pub fn preview(mut self) -> Result<(String, Option<StagedOperation>)> {
@@ -175,57 +182,11 @@ Suggestion: Pause and show your human collaborator this context:\n\n{errors}"
     }
 
     fn diff(&self, output: &str) -> String {
-        let source_code: &str = &self.source_code;
-        let content_patch = &self.content;
-        let diff_patch = DiffOptions::new().create_patch(source_code, output);
-        let formatter = PatchFormatter::new().missing_newline_message(false);
-
-        // Get the diff string and clean it up for AI consumption
-        let diff_output = formatter.fmt_patch(&diff_patch).to_string();
-        let lines: Vec<&str> = diff_output.lines().collect();
-        let mut cleaned_diff = String::new();
-
-        let content_line_count = content_patch.lines().count();
-        if content_line_count > 10 {
-            let changed_lines = changed_lines(&diff_patch, content_line_count);
-
-            let changed_fraction = (changed_lines * 100) / content_line_count;
-
-            cleaned_diff.push_str(&format!("Edit efficiency: {changed_fraction}%\n",));
-            if changed_fraction < 30 {
-                cleaned_diff.push_str("💡 TIP: For focused changes like this, you might try targeted insert/replace operations for easier review and iteration\n");
-            };
-            cleaned_diff.push('\n');
-        }
-
-        cleaned_diff.push_str("===DIFF===\n");
-        for line in lines {
-            // Skip ALL diff headers: file headers, hunk headers (line numbers), and any metadata
-            if line.starts_with("---") || line.starts_with("+++") || line.starts_with("@@") {
-                // Skip "\ No newline at end of file" messages
-                continue;
-            }
-            cleaned_diff.push_str(line);
-            cleaned_diff.push('\n');
-        }
-
-        // Remove trailing newline to avoid extra spacing
-        if cleaned_diff.ends_with('\n') {
-            cleaned_diff.pop();
-        }
-        cleaned_diff
+        DiffGenerator::generate_diff(&self.source_code, output, &self.content)
     }
 
     pub fn format_code(&self, source: &str) -> Result<String> {
-        self.language.editor().format_code(source).map_err(|e| {
-            anyhow!(
-                "The formatter has encountered the following error making \
-                 that change, so the file has not been modified. The tool has \
-                 prevented what it believes to be an unsafe edit. Please try a \
-                 different edit.\n\n\
-                 {e}"
-            )
-        })
+        Formatter::format_code(self.language, source)
     }
 
     pub fn commit(mut self) -> Result<(String, Option<String>, PathBuf)> {
@@ -243,7 +204,10 @@ Suggestion: Pause and show your human collaborator this context:\n\n{errors}"
     }
 
     fn parse(&self, output: &str, old_tree: Option<&Tree>) -> Option<Tree> {
-        let mut parser = self.language.tree_sitter_parser().unwrap();
+        let mut parser = match self.language.tree_sitter_parser() {
+            Ok(parser) => parser,
+            Err(_) => return None, // Cannot parse without a valid parser
+        };
         parser.parse(output, old_tree)
     }
 }
@@ -266,18 +230,4 @@ impl From<Editor<'_>> for StagedOperation {
             edit_position: staged_edit,
         }
     }
-}
-
-pub fn changed_lines(patch: &Patch<'_, str>, content_line_count: usize) -> usize {
-    let mut changed_line_numbers = BTreeSet::new();
-
-    for hunk in patch.hunks() {
-        // old_range().range() returns a std::ops::Range<usize> that's properly 0-indexed
-        for line_num in hunk.old_range().range() {
-            if line_num < content_line_count {
-                changed_line_numbers.insert(line_num);
-            }
-        }
-    }
-    changed_line_numbers.len()
 }
