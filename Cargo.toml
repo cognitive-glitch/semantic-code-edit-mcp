@@ -1,5 +1,5 @@
 [package]
-name = "semantic-edit-mcp"
+name = "semantic-code-edit-mcp"
 version = "0.1.3"
 authors = ["cognitive-glitch <intuitionwith@gmail.com>", "Jacob Rothstein <hi@jbr.me>"]
 edition = "2024"
