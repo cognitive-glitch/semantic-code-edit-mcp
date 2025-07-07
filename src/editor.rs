@@ -91,6 +91,31 @@ impl<'language> Editor<'language> {
         })?;
         let rope = Rope::from_str(&source_code);
 
+        // Validate anchor exists if using anchor-based selector
+        if !selector.anchor.is_empty() && !source_code.contains(&selector.anchor) {
+            return Err(anyhow!(
+                "Anchor text '{}' not found in file {}",
+                selector.anchor,
+                file_path.display()
+            ));
+        }
+
+        // For ReplaceNode operations, validate that the new content is syntactically valid
+        if matches!(selector.operation, crate::selector::Operation::ReplaceNode) {
+            let mut temp_parser = language.tree_sitter_parser()?;
+            if let Some(parsed_tree) = temp_parser.parse(&content, None) {
+                if parsed_tree.root_node().has_error() {
+                    return Err(anyhow!(
+                        "Invalid syntax in replacement content for ReplaceNode operation"
+                    ));
+                }
+            } else {
+                return Err(anyhow!(
+                    "Failed to parse replacement content for ReplaceNode operation"
+                ));
+            }
+        }
+
         Ok(Self {
             content,
             selector,

@@ -170,21 +170,22 @@ mod editor_behavior_tests {
             end: None,
         };
 
-        let editor = Editor::new(
+        let editor_result = Editor::new(
             "// comment".to_string(),
             selector,
             rust_lang,
             file.path().to_path_buf(),
             None,
-        )
-        .unwrap();
+        );
 
-        let result = editor.preview();
-        assert!(result.is_ok());
-
-        let (message, staged_op) = result.unwrap();
-        assert!(message.contains("not found") || message.contains("Anchor"));
-        assert!(staged_op.is_none());
+        // Now that Editor::new validates anchor existence, it should return an error
+        assert!(editor_result.is_err());
+        match editor_result {
+            Err(e) => {
+                assert!(e.to_string().contains("not found") || e.to_string().contains("Anchor"));
+            }
+            Ok(_) => panic!("Expected error for invalid anchor"),
+        }
     }
 
     #[test]

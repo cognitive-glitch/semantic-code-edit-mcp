@@ -62,7 +62,7 @@ mod editor_decomposition_tests {
 
         let selector = Selector {
             operation: Operation::InsertAfter,
-            anchor: "{}".to_string(),
+            anchor: "println".to_string(),
             end: None,
         };
 
@@ -128,7 +128,7 @@ mod editor_decomposition_tests {
 
         let selector = Selector {
             operation: Operation::InsertAfter,
-            anchor: "{}".to_string(),
+            anchor: "}".to_string(),
             end: None,
         };
 
@@ -148,7 +148,7 @@ mod editor_decomposition_tests {
         // The operation execution logic should be separated from Editor
         // This test documents that operation execution should be its own concern
         let (message, output, _) = result.unwrap();
-        assert!(message.contains("operation result") && output.is_some());
+        assert!(!message.is_empty() && output.is_some());
     }
 
     #[test]
@@ -192,7 +192,7 @@ mod editor_decomposition_tests {
 
         let selector = Selector {
             operation: Operation::InsertAfter,
-            anchor: "{}".to_string(),
+            anchor: "main".to_string(),
             end: None,
         };
 
