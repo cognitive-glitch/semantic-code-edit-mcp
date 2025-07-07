@@ -5,7 +5,19 @@
 
 use anyhow::Result;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
+
+/// Error type for TestFileOperations safe methods
+#[derive(Debug)]
+pub enum TestFileOperationsError {
+    MutexPoisoned,
+}
+
+impl<T> From<PoisonError<T>> for TestFileOperationsError {
+    fn from(_: PoisonError<T>) -> Self {
+        TestFileOperationsError::MutexPoisoned
+    }
+}
 
 /// Abstraction for file system operations
 ///
@@ -32,7 +44,7 @@ impl FileOperations for StdFileOperations {
 ///
 /// This implementation captures all write operations for testing purposes,
 /// allowing tests to verify what would be written without side effects.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TestFileOperations {
     captured_writes: Arc<Mutex<Vec<(PathBuf, String)>>>,
 }
@@ -76,6 +88,43 @@ impl TestFileOperations {
             .lock()
             .expect("Mutex not poisoned")
             .len()
+    }
+
+    /// Safe version of get_captured_writes that handles mutex poisoning
+    pub fn get_captured_writes_safe(
+        &self,
+    ) -> Result<Vec<(PathBuf, String)>, TestFileOperationsError> {
+        match self.captured_writes.lock() {
+            Ok(guard) => Ok(guard.clone()),
+            Err(poison_error) => Err(poison_error.into()),
+        }
+    }
+
+    /// Safe version of get_last_write_content that handles mutex poisoning
+    pub fn get_last_write_content_safe(&self) -> Result<Option<String>, TestFileOperationsError> {
+        match self.captured_writes.lock() {
+            Ok(guard) => Ok(guard.last().map(|(_, content)| content.clone())),
+            Err(poison_error) => Err(poison_error.into()),
+        }
+    }
+
+    /// Safe version of clear_captures that handles mutex poisoning
+    pub fn clear_captures_safe(&self) -> Result<(), TestFileOperationsError> {
+        match self.captured_writes.lock() {
+            Ok(mut guard) => {
+                guard.clear();
+                Ok(())
+            }
+            Err(poison_error) => Err(poison_error.into()),
+        }
+    }
+
+    /// Safe version of write_count that handles mutex poisoning
+    pub fn write_count_safe(&self) -> Result<usize, TestFileOperationsError> {
+        match self.captured_writes.lock() {
+            Ok(guard) => Ok(guard.len()),
+            Err(poison_error) => Err(poison_error.into()),
+        }
     }
 }
 
