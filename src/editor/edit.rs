@@ -1,3 +1,13 @@
+//! Individual edit operation implementation.
+//!
+//! This module provides the `Edit` struct which represents a single editing operation
+//! with validation and application capabilities. Features include:
+//! - Rope-based text manipulation for efficiency
+//! - Tree-sitter integration for AST awareness
+//! - Position tracking and validation
+//! - Content modification with syntax preservation
+//! - Integration with the broader editor system
+
 use std::borrow::Cow;
 
 use anyhow::Result;

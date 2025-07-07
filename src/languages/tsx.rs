@@ -1,3 +1,11 @@
+//! TSX (TypeScript JSX) language support with tree-sitter parsing.
+//!
+//! This module provides TSX-specific editing capabilities including:
+//! - Tree-sitter parsing for AST-aware operations
+//! - Support for .tsx files
+//! - Specialized TSX editor for React/JSX syntax
+//! - Standardized language configuration using LanguageBuilder
+
 use crate::languages::{LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::Result;
 

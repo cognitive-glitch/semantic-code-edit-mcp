@@ -1,3 +1,13 @@
+//! Set context tool for configuring working directory.
+//!
+//! This module implements the `set_context` MCP tool which sets the working
+//! directory context for relative path resolution. Features include:
+//! - Set working directory for session
+//! - Enable relative path usage in other tools
+//! - Path validation and canonicalization
+//! - Session-specific context management
+//! - Support for tilde expansion
+
 use std::path::PathBuf;
 
 use crate::state::SemanticEditTools;

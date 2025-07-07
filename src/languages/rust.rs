@@ -1,3 +1,11 @@
+//! Rust language support with rustfmt integration.
+//!
+//! This module provides Rust-specific editing capabilities including:
+//! - rustfmt integration for code formatting (edition 2024)
+//! - Tree-sitter parsing for AST-aware operations
+//! - Validation queries for semantic correctness
+//! - Native support for Rust syntax and idioms
+
 use super::{LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::{Result, anyhow};
 use std::{

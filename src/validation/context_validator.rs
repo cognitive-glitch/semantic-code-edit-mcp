@@ -1,3 +1,13 @@
+//! Context validation for semantic code editing operations.
+//!
+//! This module provides language-specific semantic validation using tree-sitter queries.
+//! It validates that code edits maintain semantic correctness beyond just syntax.
+//! Features include:
+//! - Tree-sitter query-based validation rules
+//! - Language-specific context checking
+//! - Violation reporting with node information
+//! - Integration with the broader validation system
+
 use tree_sitter::{Node, Query, QueryCursor, StreamingIterator, Tree};
 
 /// Tree-sitter based context validator for semantic code editing

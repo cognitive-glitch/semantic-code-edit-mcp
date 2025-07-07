@@ -1,3 +1,11 @@
+//! JSON language support with intelligent formatting and validation.
+//!
+//! This module provides JSON-specific editing capabilities including:
+//! - Smart indentation detection (tabs, 2-space, 4-space, or custom)
+//! - Syntax validation using serde_json
+//! - Format preservation based on existing code style
+//! - Tree-sitter parsing for AST-aware operations
+
 use super::{LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor};
 use anyhow::Result;
 use jsonformat::Indentation;

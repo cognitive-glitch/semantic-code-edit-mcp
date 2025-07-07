@@ -1,3 +1,11 @@
+//! C++ language support with tree-sitter parsing.
+//!
+//! This module provides C++-specific editing capabilities including:
+//! - Tree-sitter parsing for AST-aware operations
+//! - Support for .cpp, .cc, .cxx, .c++, .hpp, .hh, .hxx files
+//! - Standardized language configuration using LanguageBuilder
+//! - Default editor for basic operations
+
 use super::{LanguageBuilder, LanguageName};
 use anyhow::Result;
 

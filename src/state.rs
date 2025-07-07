@@ -1,13 +1,35 @@
+//! Session state management for semantic code editing operations.
+//!
+//! This module provides session management, file caching, and operation staging
+//! functionality for the semantic code editor. It manages persistent state
+//! across editing operations and provides configurable performance optimizations.
+//!
+//! ## Key Components
+//!
+//! - [`SemanticEditTools`]: Main state container with session and cache management
+//! - [`StagedOperation`]: Represents an operation that can be previewed and committed
+//! - [`CacheStats`]: Performance statistics for file caching
+//! - [`StatsLruCache`]: LRU cache with performance tracking
+//!
+//! ## Features
+//!
+//! - **Session isolation**: Separate contexts for different projects
+//! - **File caching**: Configurable LRU cache with performance statistics
+//! - **Operation staging**: Preview changes before applying them
+//! - **Path resolution**: Context-aware path handling (relative/absolute)
+//! - **Performance monitoring**: Cache hit/miss tracking and reporting
+
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use fieldwork::Fieldwork;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
 
 use crate::editor::EditPosition;
+use crate::error::SemanticEditError;
 use crate::filesystem::{FileOperations, StdFileOperations};
 use crate::languages::{LanguageName, LanguageRegistry};
 use crate::selector::Selector;
@@ -70,6 +92,10 @@ impl StatsLruCache {
 
     pub fn len(&self) -> usize {
         self.cache.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
     }
 
     pub fn stats(&self) -> &CacheStats {
@@ -260,9 +286,9 @@ impl SemanticEditTools {
 
         match self.get_context(Some(session_id))? {
             Some(context) => Ok(std::fs::canonicalize(context.join(path_str))?),
-            None => Err(anyhow!(
-                "No context found for `{session_id}`. Use set_context first or provide an absolute path.",
-            )),
+            None => Err(anyhow::Error::from(SemanticEditError::ContextNotFound {
+                session_id: session_id.to_string(),
+            })),
         }
     }
 
@@ -271,7 +297,7 @@ impl SemanticEditTools {
         let cache = self
             .file_cache
             .lock()
-            .map_err(|_| anyhow!("Cache mutex poisoned"))?;
+            .map_err(|_| SemanticEditError::CacheMutexPoisoned)?;
         Ok(cache.stats().clone())
     }
 
@@ -280,7 +306,7 @@ impl SemanticEditTools {
         let mut cache = self
             .file_cache
             .lock()
-            .map_err(|_| anyhow!("Cache mutex poisoned"))?;
+            .map_err(|_| SemanticEditError::CacheMutexPoisoned)?;
         cache.clear_stats();
         Ok(())
     }

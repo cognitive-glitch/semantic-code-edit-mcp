@@ -1,3 +1,13 @@
+//! Iterator for handling multiple potential edit locations.
+//!
+//! This module provides the `EditIterator` which handles cases where a selector
+//! might match multiple locations in the source code. Features include:
+//! - Iterate through potential edit positions
+//! - Smart location selection and ranking
+//! - Fallback handling for ambiguous matches
+//! - Integration with selector targeting system
+//! - Support for all operation types
+
 use std::iter::Iterator;
 
 use tree_sitter::Tree;

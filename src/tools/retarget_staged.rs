@@ -1,6 +1,17 @@
+//! Retarget staged operation tool for adjusting edit targeting.
+//!
+//! This module implements the `retarget_staged` MCP tool which allows modifying
+//! the targeting of a staged operation without changing the content. Features include:
+//! - Modify selector targeting for staged operations
+//! - Preview changes with new targeting
+//! - Validate new selector configuration
+//! - Keep existing content unchanged
+//! - Return updated preview with diff
+
 use crate::{selector::Selector, state::SemanticEditTools, tools::ToolHelpers};
 
-use anyhow::{Result, anyhow};
+use crate::error::SemanticEditError;
+use anyhow::Result;
 use mcplease::{
     traits::{Tool, WithExamples},
     types::Example,
@@ -69,7 +80,7 @@ impl Tool<SemanticEditTools> for RetargetStaged {
 
         let staged_operation = state
             .modify_staged_operation(None, |op| op.retarget(selector))?
-            .ok_or_else(|| anyhow!("no operation staged"))?;
+            .ok_or_else(|| anyhow::Error::from(SemanticEditError::OperationNotStaged))?;
 
         let editor = state.create_editor_from_operation(staged_operation)?;
         let (message, staged_operation) = editor.preview()?;

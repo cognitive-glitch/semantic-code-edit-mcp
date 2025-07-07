@@ -1,3 +1,12 @@
+//! Language editor traits and default implementations.
+//!
+//! This module defines the core traits for language-specific editing operations
+//! and provides default implementations. Features include:
+//! - LanguageEditor trait for custom language support
+//! - DefaultEditor providing basic tree-sitter validation
+//! - Formatting and error collection interfaces
+//! - Extensible design for adding new languages
+
 use anyhow::Result;
 use tree_sitter::{Node, Tree};
 

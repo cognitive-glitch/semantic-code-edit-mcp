@@ -1,3 +1,11 @@
+//! JavaScript language support with tree-sitter parsing.
+//!
+//! This module provides JavaScript-specific editing capabilities including:
+//! - Tree-sitter parsing for AST-aware operations
+//! - Support for .js and .mjs files
+//! - Standardized language configuration using LanguageBuilder
+//! - Default editor for basic operations
+
 use crate::languages::{LanguageBuilder, LanguageCommon, LanguageName};
 use anyhow::Result;
 

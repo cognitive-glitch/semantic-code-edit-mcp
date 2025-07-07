@@ -77,7 +77,7 @@ impl LineConverter {
 
     /// Convert a text range to a line range (0-indexed)
     ///
-    /// Returns a Range<usize> containing the start and end line numbers.
+    /// Returns a `Range<usize>` containing the start and end line numbers.
     pub fn range_to_lines(&self, start_offset: usize, end_offset: usize) -> std::ops::Range<usize> {
         std::ops::Range {
             start: self.offset_to_line(start_offset),

@@ -29,7 +29,8 @@ fn test_utf8_boundary_safety_in_validation() {
     let result = ContextValidator::validate_tree(&tree, &query, source_code);
 
     // The validation should complete without panicking
-    assert!(result.is_valid || !result.is_valid); // Just ensure it doesn't panic
+    // The test passes if we reach this point without panicking
+    drop(result); // Use the result to avoid unused variable warning
 }
 
 #[test]

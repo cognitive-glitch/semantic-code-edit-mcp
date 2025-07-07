@@ -1,6 +1,16 @@
+//! Helper utilities for MCP tools.
+//!
+//! This module provides common functionality shared across different MCP tools.
+//! It centralizes patterns and reduces code duplication between tools. Features include:
+//! - ToolHelpers trait for common operations
+//! - Editor creation from staged operations
+//! - Shared validation and error handling
+//! - Centralized operation management patterns
+
 use crate::editor::Editor;
+use crate::error::SemanticEditError;
 use crate::state::{SemanticEditTools, StagedOperation};
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 
 /// Helper trait providing common functionality across tools
 pub trait ToolHelpers {
@@ -16,7 +26,7 @@ impl ToolHelpers for SemanticEditTools {
     fn create_editor_from_staged(&mut self, session_id: Option<&str>) -> Result<Editor> {
         let staged_operation = self
             .get_staged_operation(session_id)?
-            .ok_or_else(|| anyhow!("No operation is currently staged"))?;
+            .ok_or_else(|| anyhow::Error::from(SemanticEditError::OperationNotStaged))?;
 
         Editor::from_staged_operation(staged_operation, self.language_registry())
     }
@@ -44,7 +54,7 @@ mod tests {
 
         assert!(result.is_err());
         if let Err(e) = result {
-            assert!(e.to_string().contains("No operation is currently staged"));
+            assert!(e.to_string().contains("no operation is currently staged"));
         }
         Ok(())
     }

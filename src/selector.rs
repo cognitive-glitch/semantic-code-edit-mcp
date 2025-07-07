@@ -1,6 +1,45 @@
+//! Code targeting and selection system for precise editing operations.
+//!
+//! This module provides a flexible system for targeting specific locations in source code
+//! for editing operations. It supports multiple targeting methods including text anchors,
+//! AST node types, line/column positions, and tree-sitter queries.
+//!
+//! ## Key Components
+//!
+//! - [`Selector`]: Main selector struct with targeting information and operation type
+//! - [`Operation`]: Types of editing operations (insert, replace, etc.)
+//! - Text-based targeting using string patterns
+//! - AST-based targeting using node types and names
+//! - Line/column-based targeting
+//! - Tree-sitter query-based targeting
+//!
+//! ## Operation Types
+//!
+//! - **Insert operations**: `InsertBefore`, `InsertAfter`, `InsertAfterNode`
+//! - **Replace operations**: `ReplaceRange`, `ReplaceExact`, `ReplaceNode`
+//!
+//! ## Examples
+//!
+//! ```rust
+//! use semantic_code_edit_mcp::selector::{Selector, Operation};
+//!
+//! // Target by text anchor
+//! let selector = Selector {
+//!     operation: Operation::InsertAfter,
+//!     anchor: "function main".to_string(),
+//!     end: None,
+//! };
+//!
+//! // Target a range with start and end
+//! let selector = Selector {
+//!     operation: Operation::ReplaceRange,
+//!     anchor: "// Start here".to_string(),
+//!     end: Some("// End here".to_string()),
+//! };
+//! ```
+
 use std::fmt::Display;
 
-// Simplified text-based selector system
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -45,7 +84,7 @@ pub struct Selector {
     ///
     /// Insert Operations
     /// - **`insert_before`** - Insert content immediately before the anchor text
-    /// - **`insert_after`** - Insert content immediately after the anchor text  
+    /// - **`insert_after`** - Insert content immediately after the anchor text
     /// - **`insert_after_node`** - Insert content after the complete AST node containing the anchor
     ///
     /// Replace Operations
@@ -80,7 +119,7 @@ pub struct Selector {
     ///
     /// # Examples
     /// - `"fn main() {"` - Targets a function definition
-    /// - `"struct User {"` - Targets a struct definition  
+    /// - `"struct User {"` - Targets a struct definition
     /// - `"// TODO: implement"` - Targets a specific comment
     /// - `"import React"` - Targets an import statement
     pub anchor: String,

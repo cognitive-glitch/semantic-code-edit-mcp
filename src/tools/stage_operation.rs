@@ -1,3 +1,12 @@
+//! Stage operation tool for semantic code editing.
+//!
+//! This module implements the `stage_operation` MCP tool which allows previewing
+//! code edits before applying them. It provides a safe workflow where users can:
+//! - Preview changes with detailed diff output
+//! - Validate edits before committing
+//! - Support for all operation types (insert, replace, etc.)
+//! - Comprehensive examples and documentation
+
 use crate::editor::Editor;
 use crate::languages::LanguageName;
 use crate::selector::{Operation, Selector};

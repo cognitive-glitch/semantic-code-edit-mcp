@@ -1,6 +1,17 @@
+//! Commit staged operation tool for applying code edits.
+//!
+//! This module implements the `commit_staged` MCP tool which executes a previously
+//! staged operation, applying the changes to the actual file. Features include:
+//! - Executes the currently staged operation
+//! - Validates the operation exists
+//! - Applies changes to the file system
+//! - Returns success confirmation
+//! - Clears the staged operation after commit
+
+use crate::error::SemanticEditError;
 use crate::state::SemanticEditTools;
 use crate::tools::ToolHelpers;
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use mcplease::traits::{Tool, WithExamples};
 use mcplease::types::Example;
 use serde::{Deserialize, Serialize};
@@ -35,12 +46,14 @@ impl Tool<SemanticEditTools> for CommitStaged {
         let Self { acknowledge } = self;
 
         if !acknowledge {
-            return Err(anyhow!("Operation not acknowledged"));
+            return Err(anyhow::Error::from(
+                SemanticEditError::OperationNotAcknowledged,
+            ));
         }
 
         let staged_operation = state
             .take_staged_operation(None)?
-            .ok_or_else(|| anyhow!("No operation is currently staged"))?;
+            .ok_or_else(|| anyhow::Error::from(SemanticEditError::OperationNotStaged))?;
 
         let editor = state.create_editor_from_operation(staged_operation)?;
         let (message, output, output_path) = editor.commit()?;

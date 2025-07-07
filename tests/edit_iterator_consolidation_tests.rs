@@ -41,9 +41,7 @@ mod edit_iterator_consolidation_tests {
         );
 
         // We don't care about the exact result, just that it doesn't panic
-        match result {
-            Ok(_) => {}  // Editor created successfully
-            Err(_) => {} // Editor creation failed gracefully
-        }
+        // Editor created successfully or failed gracefully - both are acceptable
+        let _ = result;
     }
 }

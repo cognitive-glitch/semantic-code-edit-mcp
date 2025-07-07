@@ -1,3 +1,11 @@
+//! Python language support with rustpython-parser validation.
+//!
+//! This module provides Python-specific editing capabilities including:
+//! - rustpython-parser integration for syntax validation
+//! - Tree-sitter parsing for AST-aware operations
+//! - Support for both .py and .pyi files
+//! - Validation queries for Python semantic correctness
+
 use crate::languages::{
     LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor, utils::LineConverter,
 };

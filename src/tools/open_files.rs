@@ -1,3 +1,13 @@
+//! Open files tool for reading and diffing source code.
+//!
+//! This module implements the `open_files` MCP tool which provides file reading
+//! capabilities with optional diff support. Features include:
+//! - Read single or multiple files
+//! - Generate diffs between file versions
+//! - Language detection and caching
+//! - Performance metrics and hashing
+//! - Support for both absolute and relative paths
+
 use crate::error::SemanticEditError;
 use crate::languages::LanguageName;
 use crate::state::SemanticEditTools;

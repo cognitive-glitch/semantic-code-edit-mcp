@@ -50,8 +50,22 @@ pub enum SemanticEditError {
     #[error("file cache is poisoned")]
     FileCachePoisoned,
 
+    #[error("cache mutex is poisoned")]
+    CacheMutexPoisoned,
+
     #[error("session state is invalid")]
     InvalidSessionState,
+
+    #[error("no operation is currently staged")]
+    OperationNotStaged,
+
+    #[error("operation not acknowledged")]
+    OperationNotAcknowledged,
+
+    #[error(
+        "no context found for session `{session_id}`. Use set_context first or provide an absolute path"
+    )]
+    ContextNotFound { session_id: String },
 
     /// UTF-8 and text boundary errors
     #[error("invalid UTF-8 boundary at byte position {position}")]

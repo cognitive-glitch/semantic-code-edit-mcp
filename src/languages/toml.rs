@@ -1,3 +1,11 @@
+//! TOML language support with taplo formatting and validation.
+//!
+//! This module provides TOML-specific editing capabilities including:
+//! - Taplo formatter integration for code formatting
+//! - Validation using taplo for syntax correctness
+//! - Tree-sitter parsing for AST-aware operations
+//! - Line-based conversion utilities for editing
+
 use crate::languages::{
     LanguageBuilder, LanguageCommon, LanguageName, traits::LanguageEditor, utils::LineConverter,
 };

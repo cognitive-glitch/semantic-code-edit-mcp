@@ -1,3 +1,33 @@
+//! Multi-language support system for semantic code editing.
+//!
+//! This module provides support for 17+ programming languages through a unified
+//! interface. Each language can have custom parsing, formatting, and validation
+//! capabilities while sharing common functionality.
+//!
+//! ## Supported Languages
+//!
+//! - **Systems**: Rust, C, C++, Go
+//! - **Web**: JavaScript, TypeScript, TSX
+//! - **Enterprise**: Java, C#, PHP
+//! - **Scripting**: Python, Ruby
+//! - **Data**: JSON, TOML
+//! - **Generic**: Plain text
+//!
+//! ## Key Components
+//!
+//! - [`LanguageRegistry`]: Central registry for all supported languages
+//! - [`LanguageBuilder`]: Fluent API for creating language configurations
+//! - [`LanguageCommon`]: Common interface for all languages
+//! - [`LanguageEditor`]: Trait for language-specific editing operations
+//!
+//! ## Features
+//!
+//! - **Standardized configuration**: Consistent setup across all languages
+//! - **Custom editors**: Language-specific formatting and validation
+//! - **Validation queries**: Tree-sitter queries for semantic validation
+//! - **Auto-detection**: File extension-based language detection
+//! - **Performance**: Shared utilities and optimizations
+
 pub mod c;
 pub mod cpp;
 pub mod csharp;
